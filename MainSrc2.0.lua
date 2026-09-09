@@ -1,59 +1,69 @@
+--[[
+    Enhanced PanelLib UI Framework
+    Features: Responsive layouts, dynamic theme updates, custom widgets, & core protections.
+--]]
+
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
+local CoreGui          = game:GetService("CoreGui")
 
 ----------------------------------------------------------------------
 -- Configuration & Presets
 ----------------------------------------------------------------------
 local Theme = {
-	Background = Color3.fromRGB(12, 12, 12),
-	Surface    = Color3.fromRGB(18, 18, 18),
-	Row        = Color3.fromRGB(24, 24, 24),
-	RowHover   = Color3.fromRGB(32, 32, 32),
-	Stroke     = Color3.fromRGB(45, 45, 45),
-	Text       = Color3.fromRGB(225, 225, 225),
-	SubText    = Color3.fromRGB(110, 110, 110),
+	Background = Color3.fromRGB(14, 14, 16),
+	Surface    = Color3.fromRGB(20, 20, 24),
+	Row        = Color3.fromRGB(26, 26, 32),
+	RowHover   = Color3.fromRGB(34, 34, 42),
+	Stroke     = Color3.fromRGB(48, 48, 58),
+	Text       = Color3.fromRGB(235, 235, 240),
+	SubText    = Color3.fromRGB(130, 130, 145),
 	Accent     = Color3.fromRGB(100, 160, 255),
-	Off        = Color3.fromRGB(50, 50, 50),
-	Warning    = Color3.fromRGB(255, 190, 70),
+	Off        = Color3.fromRGB(45, 45, 52),
+	Warning    = Color3.fromRGB(255, 180, 60),
+	Error      = Color3.fromRGB(255, 75, 75),
 }
 
 local Presets = {
-	["Default"] = { Accent = Color3.fromRGB(100, 160, 255) },
-	["Pink"]    = { Accent = Color3.fromRGB(255, 100, 220) },
-	["Green"]   = { Accent = Color3.fromRGB(80,  200, 120) },
-	["Red"]     = { Accent = Color3.fromRGB(220, 70,  70)  },
-	["Purple"]  = { Accent = Color3.fromRGB(160, 100, 255) },
-	["Orange"]  = { Accent = Color3.fromRGB(255, 150, 60)  },
-	["Teal"]    = { Accent = Color3.fromRGB(60,  210, 190) },
-	["White"]   = { Accent = Color3.fromRGB(220, 220, 220) },
+	["Default"] = Color3.fromRGB(100, 160, 255),
+	["Pink"]    = Color3.fromRGB(255, 100, 220),
+	["Green"]   = Color3.fromRGB(80,  200, 120),
+	["Red"]     = Color3.fromRGB(235, 70,  70),
+	["Purple"]  = Color3.fromRGB(160, 100, 255),
+	["Orange"]  = Color3.fromRGB(255, 150, 60),
+	["Teal"]    = Color3.fromRGB(60,  210, 190),
+	["White"]   = Color3.fromRGB(230, 230, 235),
 }
 
 ----------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------
-local FONT_BOLD  = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
-local FONT_MED   = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
-local FONT_REG   = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular)
+local FONT_BOLD = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold)
+local FONT_MED  = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Medium)
+local FONT_REG  = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Regular)
 
 local PADDING    = 10
 local ROW_HEIGHT = 30
-local ROW_GAP    = 4
+local ROW_GAP    = 5
 local TI         = TweenInfo.new(0.15, Enum.EasingStyle.Quad,  Enum.EasingDirection.Out)
 local TI_S       = TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
 ----------------------------------------------------------------------
 -- Helpers
 ----------------------------------------------------------------------
+local function safeService(service)
+	return (cloneref and cloneref(game:GetService(service))) or game:GetService(service)
+end
+
 local function getGui()
 	if gethui then return gethui() end
-	local ok, cg = pcall(function()
-		return (cloneref and cloneref(game:GetService("CoreGui"))) or game:GetService("CoreGui")
-	end)
-	return ok and cg or game:GetService("CoreGui")
+	local ok, cg = pcall(function() return safeService("CoreGui") end)
+	return ok and cg or safeService("Players").LocalPlayer:WaitForChild("PlayerGui")
 end
 
 local function tween(obj, info, props)
-	local t = TweenService:Create(obj, info or TI, props)
+	if not obj then return end
+	local t = safeService("TweenService"):Create(obj, info or TI, props)
 	t:Play()
 	return t
 end
@@ -93,8 +103,8 @@ local function anchorPosition(position, width)
 	local pos = {
 		topright    = UDim2.new(1, -(width + pad), 0, pad),
 		topleft     = UDim2.new(0, pad, 0, pad),
-		bottomright = UDim2.new(1, -(width + pad), 1, -(300 + pad)),
-		bottomleft  = UDim2.new(0, pad, 1, -(300 + pad)),
+		bottomright = UDim2.new(1, -(width + pad), 1, -(350 + pad)),
+		bottomleft  = UDim2.new(0, pad, 1, -(350 + pad)),
 	}
 	return pos[position] or pos["topright"]
 end
@@ -119,7 +129,7 @@ local function makeDraggable(frame, handle)
 			startFrame = frame.Position
 
 			if dragConn then dragConn:Disconnect() end
-			dragConn = UserInputService.InputChanged:Connect(function(moveInp)
+			dragConn = safeService("UserInputService").InputChanged:Connect(function(moveInp)
 				local mt = moveInp.UserInputType
 				if dragging and (mt == Enum.UserInputType.MouseMovement or mt == Enum.UserInputType.Touch) then
 					local delta = moveInp.Position - startPos
@@ -131,43 +141,54 @@ local function makeDraggable(frame, handle)
 			end)
 
 			inp.Changed:Connect(function()
-				if inp.UserInputState == Enum.UserInputState.End then
-					stopDrag()
-				end
+				if inp.UserInputState == Enum.UserInputState.End then stopDrag() end
 			end)
 		end
 	end)
 
 	handle.InputEnded:Connect(function(inp)
 		local t = inp.UserInputType
-		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
-			stopDrag()
-		end
+		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then stopDrag() end
 	end)
 end
 
 ----------------------------------------------------------------------
--- PanelLib
+-- PanelLib Main
 ----------------------------------------------------------------------
 local PanelLib = {}
 
 function PanelLib:CreatePanel(cfg)
 	cfg = cfg or {}
 
-	local width    = cfg.Width    or 230
-	local position = cfg.Position or "topright"
-	local accent   = cfg.Accent   or Theme.Accent
-	local title    = cfg.Title
+	local width     = cfg.Width    or 240
+	local position  = cfg.Position or "topright"
+	local accent    = cfg.Accent   or Theme.Accent
+	local title     = cfg.Title
+	local toggleKey = cfg.ToggleKey or Enum.KeyCode.RightControl
 
 	local connections = {}
+	local accentUpdaters = {}
+
 	local function track(conn)
 		table.insert(connections, conn)
 		return conn
 	end
 
-	-- ScreenGui
+	local function bindAccent(callback)
+		table.insert(accentUpdaters, callback)
+		callback(accent)
+	end
+
+	local function setAccent(newColor)
+		accent = newColor
+		for _, cb in ipairs(accentUpdaters) do
+			task.spawn(cb, accent)
+		end
+	end
+
+	-- ScreenGui Setup
 	local gui = Instance.new("ScreenGui")
-	gui.Name           = title and (title .. "Panel") or "PanelLib"
+	gui.Name           = title and (title .. "_Panel") or "PanelLib_Gui"
 	gui.ResetOnSpawn   = false
 	gui.IgnoreGuiInset = true
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -175,11 +196,25 @@ function PanelLib:CreatePanel(cfg)
 	gui.Enabled        = true
 	gui.Parent         = getGui()
 
-	-- Root
+	-- Notification Holder
+	local notificationHolder = Instance.new("Frame")
+	notificationHolder.Name = "Notifications"
+	notificationHolder.BackgroundTransparency = 1
+	notificationHolder.Size = UDim2.new(0, 200, 1, -20)
+	notificationHolder.Position = UDim2.new(1, -210, 0, 10)
+	notificationHolder.Parent = gui
+
+	local notifLayout = Instance.new("UIListLayout")
+	notifLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+	notifLayout.Padding = UDim.new(0, 6)
+	notifLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	notifLayout.Parent = notificationHolder
+
+	-- Root Container
 	local root = Instance.new("Frame")
 	root.Name                   = "Root"
 	root.BackgroundColor3        = Theme.Background
-	root.BackgroundTransparency = 0.04
+	root.BackgroundTransparency = 0.05
 	root.BorderSizePixel        = 0
 	root.Size                   = UDim2.new(0, width, 0, 0)
 	root.AutomaticSize          = Enum.AutomaticSize.Y
@@ -188,11 +223,18 @@ function PanelLib:CreatePanel(cfg)
 	corner(root, 10)
 	stroke(root, Theme.Stroke, 0.5, 1)
 
-	-- Settings Overlay
+	-- Keybind To Toggle GUI
+	track(safeService("UserInputService").InputBegan:Connect(function(inp, gpe)
+		if not gpe and inp.KeyCode == toggleKey then
+			gui.Enabled = not gui.Enabled
+		end
+	end))
+
+	-- Settings Overlay Frame
 	local settingsOverlay = Instance.new("Frame")
 	settingsOverlay.Name                   = "SettingsOverlay"
 	settingsOverlay.BackgroundColor3        = Theme.Background
-	settingsOverlay.BackgroundTransparency = 0.04
+	settingsOverlay.BackgroundTransparency = 0.02
 	settingsOverlay.BorderSizePixel        = 0
 	settingsOverlay.Size                   = UDim2.new(1, 0, 0, 0)
 	settingsOverlay.AutomaticSize          = Enum.AutomaticSize.Y
@@ -215,84 +257,81 @@ function PanelLib:CreatePanel(cfg)
 	overlayLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	overlayLayout.Parent    = settingsOverlay
 
-	makeLabel(settingsOverlay, "ACCENT COLOUR", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 16)):SetAttribute("Order", 1)
+	makeLabel(settingsOverlay, "ACCENT COLOR", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 14))
 
 	local colourGrid = Instance.new("Frame")
 	colourGrid.BackgroundTransparency = 1
 	colourGrid.Size                   = UDim2.new(1, 0, 0, 0)
 	colourGrid.AutomaticSize          = Enum.AutomaticSize.Y
-	colourGrid.LayoutOrder            = 2
 	colourGrid.Parent                 = settingsOverlay
 
 	local colourGridLayout = Instance.new("UIGridLayout")
-	colourGridLayout.CellSize             = UDim2.new(0, 26, 0, 26)
+	colourGridLayout.CellSize             = UDim2.new(0, 23, 0, 23)
 	colourGridLayout.CellPadding          = UDim2.new(0, 5, 0, 5)
 	colourGridLayout.SortOrder            = Enum.SortOrder.LayoutOrder
 	colourGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	colourGridLayout.Parent              = colourGrid
+	colourGridLayout.Parent               = colourGrid
 
 	local activeSwatchStroke = nil
 	local presetOrder        = { "Default", "Pink", "Green", "Red", "Purple", "Orange", "Teal", "White" }
 
 	for i, name in ipairs(presetOrder) do
-		local color  = Presets[name].Accent
+		local color  = Presets[name]
 		local swatch = Instance.new("TextButton")
 		swatch.BackgroundColor3 = color
 		swatch.BorderSizePixel  = 0
 		swatch.Text             = ""
 		swatch.AutoButtonColor  = false
 		swatch.LayoutOrder      = i
-		swatch.Size             = UDim2.new(0, 26, 0, 26)
 		swatch.Parent           = colourGrid
-		corner(swatch, 6)
+		corner(swatch, 5)
 
 		swatch.Activated:Connect(function()
-			accent = color
+			setAccent(color)
 			if activeSwatchStroke then activeSwatchStroke:Destroy() end
-			local sel = stroke(swatch, color, 0, 2)
-			activeSwatchStroke = sel
+			activeSwatchStroke = stroke(swatch, Color3.new(1,1,1), 0, 2)
 		end)
 	end
 
-	makeLabel(settingsOverlay, "OPACITY", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 16)):SetAttribute("Order", 3)
+	makeLabel(settingsOverlay, "OPACITY", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 14))
 
 	local opacityRow = Instance.new("Frame")
 	opacityRow.BackgroundTransparency = 1
-	opacityRow.Size                   = UDim2.new(1, 0, 0, 24)
-	opacityRow.LayoutOrder            = 4
+	opacityRow.Size                   = UDim2.new(1, 0, 0, 20)
 	opacityRow.Parent                 = settingsOverlay
 
 	local opacityTrack = Instance.new("Frame")
 	opacityTrack.BackgroundColor3 = Theme.Off
-	opacityTrack.Position         = UDim2.new(0, 0, 0.5, -3)
-	opacityTrack.Size             = UDim2.new(1, -40, 0, 5)
+	opacityTrack.Position         = UDim2.new(0, 0, 0.5, -2)
+	opacityTrack.Size             = UDim2.new(1, -40, 0, 4)
 	opacityTrack.BorderSizePixel  = 0
 	opacityTrack.Parent           = opacityRow
 	corner(opacityTrack, 3)
 
 	local opacityFill = Instance.new("Frame")
-	opacityFill.BackgroundColor3 = Theme.Accent
-	opacityFill.Size             = UDim2.new(0.96, 0, 1, 0)
+	opacityFill.BackgroundColor3 = accent
+	opacityFill.Size             = UDim2.new(0.95, 0, 1, 0)
 	opacityFill.BorderSizePixel  = 0
 	opacityFill.Parent           = opacityTrack
 	corner(opacityFill, 3)
+	bindAccent(function(c) opacityFill.BackgroundColor3 = c end)
 
 	local opacityKnob = Instance.new("Frame")
 	opacityKnob.BackgroundColor3 = Theme.Text
 	opacityKnob.AnchorPoint      = Vector2.new(0.5, 0.5)
-	opacityKnob.Position         = UDim2.new(0.96, 0, 0.5, 0)
-	opacityKnob.Size             = UDim2.fromOffset(12, 12)
+	opacityKnob.Position         = UDim2.new(0.95, 0, 0.5, 0)
+	opacityKnob.Size             = UDim2.fromOffset(10, 10)
 	opacityKnob.BorderSizePixel  = 0
 	opacityKnob.ZIndex           = 2
 	opacityKnob.Parent           = opacityTrack
-	corner(opacityKnob, 6)
+	corner(opacityKnob, 5)
 
-	local opacityLbl = makeLabel(opacityRow, "96%", FONT_BOLD, 11, Theme.SubText, UDim2.new(1, 0, 0.5, 0), UDim2.new(0, 34, 1, 0), Enum.TextXAlignment.Right)
+	local opacityLbl = makeLabel(opacityRow, "95%", FONT_BOLD, 10, Theme.SubText, UDim2.new(1, 0, 0.5, 0), UDim2.new(0, 34, 1, 0), Enum.TextXAlignment.Right)
 	opacityLbl.AnchorPoint = Vector2.new(1, 0.5)
 
 	local opacityDragging = false
 	local function applyOpacity(alpha)
-		local pct = math.clamp(math.floor(alpha * 100 + 0.5), 20, 100)
+		local pct = math.clamp(math.floor(alpha * 100 + 0.5), 10, 100)
 		alpha = pct / 100
 		opacityFill.Size            = UDim2.new(alpha, 0, 1, 0)
 		opacityKnob.Position        = UDim2.new(alpha, 0, 0.5, 0)
@@ -301,40 +340,30 @@ function PanelLib:CreatePanel(cfg)
 	end
 
 	opacityTrack.InputBegan:Connect(function(inp)
-		local t = inp.UserInputType
-		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
 			opacityDragging = true
-			local ap = opacityTrack.AbsolutePosition.X
-			local sz = opacityTrack.AbsoluteSize.X
-			applyOpacity(math.clamp((inp.Position.X - ap) / sz, 0, 1))
+			applyOpacity(math.clamp((inp.Position.X - opacityTrack.AbsolutePosition.X) / opacityTrack.AbsoluteSize.X, 0, 1))
 		end
 	end)
 	opacityTrack.InputEnded:Connect(function(inp)
-		local t = inp.UserInputType
-		if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
-			opacityDragging = false
-		end
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then opacityDragging = false end
 	end)
-	track(UserInputService.InputChanged:Connect(function(inp)
-		local t = inp.UserInputType
-		if opacityDragging and (t == Enum.UserInputType.MouseMovement or t == Enum.UserInputType.Touch) then
-			local ap = opacityTrack.AbsolutePosition.X
-			local sz = opacityTrack.AbsoluteSize.X
-			applyOpacity(math.clamp((inp.Position.X - ap) / sz, 0, 1))
+	track(safeService("UserInputService").InputChanged:Connect(function(inp)
+		if opacityDragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
+			applyOpacity(math.clamp((inp.Position.X - opacityTrack.AbsolutePosition.X) / opacityTrack.AbsoluteSize.X, 0, 1))
 		end
 	end))
 
-	makeLabel(settingsOverlay, "POSITION", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 16)):SetAttribute("Order", 5)
+	makeLabel(settingsOverlay, "POSITION", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 14))
 
 	local posGrid = Instance.new("Frame")
 	posGrid.BackgroundTransparency = 1
 	posGrid.Size                   = UDim2.new(1, 0, 0, 0)
 	posGrid.AutomaticSize          = Enum.AutomaticSize.Y
-	posGrid.LayoutOrder            = 6
 	posGrid.Parent                 = settingsOverlay
 
 	local posGridLayout = Instance.new("UIGridLayout")
-	posGridLayout.CellSize    = UDim2.new(0.5, -3, 0, 26)
+	posGridLayout.CellSize    = UDim2.new(0.5, -3, 0, 24)
 	posGridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
 	posGridLayout.SortOrder   = Enum.SortOrder.LayoutOrder
 	posGridLayout.Parent      = posGrid
@@ -350,7 +379,7 @@ function PanelLib:CreatePanel(cfg)
 		pb.Text             = lbl
 		pb.FontFace         = FONT_MED
 		pb.TextColor3       = Theme.SubText
-		pb.TextSize         = 11
+		pb.TextSize         = 10
 		pb.LayoutOrder      = i
 		pb.Parent           = posGrid
 		corner(pb, 5)
@@ -366,7 +395,7 @@ function PanelLib:CreatePanel(cfg)
 		end)
 	end
 
-	-- Title Bar
+	-- Title Bar Setup
 	local titleBar
 	local settingsOpen = false
 
@@ -396,10 +425,12 @@ function PanelLib:CreatePanel(cfg)
 		accentBar.BackgroundColor3 = accent
 		accentBar.BorderSizePixel  = 0
 		accentBar.Position         = UDim2.new(0, 0, 0.2, 0)
-		accentBar.Size             = UDim2.new(0, 2, 0.6, 0)
+		accentBar.Size             = UDim2.new(0, 3, 0.6, 0)
 		accentBar.ZIndex           = 6
 		accentBar.Parent           = titleBar
 		corner(accentBar, 2)
+
+		bindAccent(function(c) accentBar.BackgroundColor3 = c end)
 
 		local titleLbl = makeLabel(titleBar, title, FONT_BOLD, 12, Theme.Text, UDim2.new(0, 14, 0, 0), UDim2.new(1, -50, 1, 0))
 		titleLbl.ZIndex = 6
@@ -412,7 +443,7 @@ function PanelLib:CreatePanel(cfg)
 		settingsBtn.Text                   = "⚙"
 		settingsBtn.FontFace               = FONT_MED
 		settingsBtn.TextColor3             = Theme.SubText
-		settingsBtn.TextSize               = 14
+		settingsBtn.TextSize               = 13
 		settingsBtn.AnchorPoint            = Vector2.new(1, 0.5)
 		settingsBtn.Position               = UDim2.new(1, -8, 0.5, 0)
 		settingsBtn.Size                   = UDim2.fromOffset(24, 24)
@@ -420,12 +451,8 @@ function PanelLib:CreatePanel(cfg)
 		settingsBtn.Parent                 = titleBar
 		corner(settingsBtn, 5)
 
-		settingsBtn.MouseEnter:Connect(function()
-			tween(settingsBtn, TI, { BackgroundTransparency = 0, TextColor3 = accent })
-		end)
-		settingsBtn.MouseLeave:Connect(function()
-			tween(settingsBtn, TI, { BackgroundTransparency = 1, TextColor3 = Theme.SubText })
-		end)
+		settingsBtn.MouseEnter:Connect(function() tween(settingsBtn, TI, { BackgroundTransparency = 0, TextColor3 = accent }) end)
+		settingsBtn.MouseLeave:Connect(function() tween(settingsBtn, TI, { BackgroundTransparency = 1, TextColor3 = settingsOpen and accent or Theme.SubText }) end)
 		settingsBtn.Activated:Connect(function()
 			settingsOpen = not settingsOpen
 			settingsOverlay.Visible = settingsOpen
@@ -435,7 +462,7 @@ function PanelLib:CreatePanel(cfg)
 		makeDraggable(root, titleBar)
 	end
 
-	-- Body Content Container
+	-- Main Body Container
 	local body = Instance.new("Frame")
 	body.Name                   = "Body"
 	body.BackgroundTransparency = 1
@@ -458,7 +485,7 @@ function PanelLib:CreatePanel(cfg)
 	bodyPad.Parent        = body
 
 	--------------------------------------------------------------
-	-- Panel API & Components
+	-- Panel Controls & API
 	--------------------------------------------------------------
 	local Panel  = {}
 	local _order = 0
@@ -482,12 +509,65 @@ function PanelLib:CreatePanel(cfg)
 
 	function Panel:Destroy()
 		for _, conn in ipairs(connections) do
-			if conn and conn.Connected then
-				conn:Disconnect()
-			end
+			if conn and conn.Connected then conn:Disconnect() end
 		end
 		table.clear(connections)
+		table.clear(accentUpdaters)
 		gui:Destroy()
+	end
+
+	function Panel:Notify(titleText, msgText, duration)
+		duration = duration or 3
+		local notif = Instance.new("Frame")
+		notif.BackgroundColor3 = Theme.Surface
+		notif.Size = UDim2.new(1, 0, 0, 0)
+		notif.AutomaticSize = Enum.AutomaticSize.Y
+		notif.Parent = notificationHolder
+		corner(notif, 6)
+		stroke(notif, Theme.Stroke, 0.3, 1)
+
+		local npad = Instance.new("UIPadding")
+		npad.PaddingTop = UDim.new(0, 6)
+		npad.PaddingBottom = UDim.new(0, 6)
+		npad.PaddingLeft = UDim.new(0, 8)
+		npad.PaddingRight = UDim.new(0, 8)
+		npad.Parent = notif
+
+		local tlbl = makeLabel(notif, titleText or "Notice", FONT_BOLD, 11, accent, UDim2.new(0, 0, 0, 0), UDim2.new(1, 0, 0, 14))
+		bindAccent(function(c) tlbl.TextColor3 = c end)
+
+		local mlbl = makeLabel(notif, msgText or "", FONT_REG, 10, Theme.SubText, UDim2.new(0, 0, 0, 14), UDim2.new(1, 0, 0, 0))
+		mlbl.AutomaticSize = Enum.AutomaticSize.Y
+		mlbl.TextWrapped = true
+
+		task.delay(duration, function()
+			tween(notif, TI, { BackgroundTransparency = 1 }):Completed:Connect(function()
+				notif:Destroy()
+			end)
+		end)
+	end
+
+	function Panel:Section(text)
+		local row = newRow(18, true)
+		local lbl = makeLabel(row, string.upper(text or "SECTION"), FONT_BOLD, 9, Theme.SubText)
+
+		bindAccent(function(c) lbl.TextColor3 = c end)
+
+		return {
+			Set = function(_, t) lbl.Text = string.upper(t) end,
+			Instance = row,
+		}
+	end
+
+	function Panel:Separator()
+		local row = newRow(2, true)
+		local line = Instance.new("Frame")
+		line.BackgroundColor3 = Theme.Stroke
+		line.BorderSizePixel = 0
+		line.Size = UDim2.new(1, 0, 0, 1)
+		line.Position = UDim2.new(0, 0, 0.5, 0)
+		line.Parent = row
+		return { Instance = row }
 	end
 
 	function Panel:Label(text)
@@ -495,7 +575,7 @@ function PanelLib:CreatePanel(cfg)
 		local lbl = makeLabel(row, text or "", FONT_MED, 10, Theme.SubText)
 
 		return {
-			Set      = function(_, t) lbl.Text = t end,
+			Set = function(_, t) lbl.Text = t end,
 			Instance = row,
 		}
 	end
@@ -503,7 +583,7 @@ function PanelLib:CreatePanel(cfg)
 	function Panel:Warning(text)
 		local row = newRow(ROW_HEIGHT, true)
 		row.AutomaticSize          = Enum.AutomaticSize.Y
-		row.BackgroundColor3        = Color3.fromRGB(34, 26, 12)
+		row.BackgroundColor3        = Color3.fromRGB(38, 28, 14)
 		row.BackgroundTransparency = 0
 		corner(row, 6)
 		stroke(row, Theme.Warning, 0.5, 1)
@@ -515,7 +595,7 @@ function PanelLib:CreatePanel(cfg)
 		pad.PaddingBottom = UDim.new(0, 6)
 		pad.Parent        = row
 
-		local lbl = makeLabel(row, "⚠  " .. (text or ""), FONT_MED, 11, Theme.Warning)
+		local lbl = makeLabel(row, "⚠  " .. (text or ""), FONT_MED, 10, Theme.Warning)
 		lbl.TextWrapped   = true
 		lbl.AutomaticSize = Enum.AutomaticSize.Y
 		lbl.Size          = UDim2.new(1, 0, 0, 0)
@@ -526,11 +606,15 @@ function PanelLib:CreatePanel(cfg)
 		}
 	end
 
-	function Panel:Stat(name, value, accentColor)
+	function Panel:Stat(name, value, overrideAccent)
 		local row = newRow(ROW_HEIGHT)
 
-		makeLabel(row, name or "Stat", FONT_REG, 11, Theme.SubText, UDim2.new(0, 8, 0, 0), UDim2.new(0.55, -8, 1, 0))
-		local valLbl = makeLabel(row, tostring(value or "-"), FONT_BOLD, 11, accentColor or accent, UDim2.new(0.45, 0, 0, 0), UDim2.new(0.55, -8, 1, 0), Enum.TextXAlignment.Right)
+		makeLabel(row, name or "Stat", FONT_REG, 11, Theme.SubText, UDim2.new(0, 8, 0, 0), UDim2.new(0.5, -8, 1, 0))
+		local valLbl = makeLabel(row, tostring(value or "-"), FONT_BOLD, 11, overrideAccent or accent, UDim2.new(0.5, 0, 0, 0), UDim2.new(0.5, -8, 1, 0), Enum.TextXAlignment.Right)
+
+		if not overrideAccent then
+			bindAccent(function(c) valLbl.TextColor3 = c end)
+		end
 
 		return {
 			Set      = function(_, v) valLbl.Text = tostring(v) end,
@@ -595,6 +679,10 @@ function PanelLib:CreatePanel(cfg)
 		knob.Parent           = toggleTrack
 		corner(knob, 7)
 
+		bindAccent(function(c)
+			if state then toggleTrack.BackgroundColor3 = c end
+		end)
+
 		local api = {}
 		function api:Set(v)
 			state = v
@@ -617,16 +705,17 @@ function PanelLib:CreatePanel(cfg)
 		max     = max     or 100
 		default = math.clamp(default or min, min, max)
 
-		local row = newRow(46)
+		local row = newRow(44)
 
-		makeLabel(row, name or "Slider", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 5), UDim2.new(0.65, -8, 0, 16))
+		makeLabel(row, name or "Slider", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 4), UDim2.new(0.65, -8, 0, 16))
 
-		local valLbl = makeLabel(row, tostring(default), FONT_BOLD, 11, accent, UDim2.new(1, -8, 0, 5), UDim2.new(0.35, -8, 0, 16), Enum.TextXAlignment.Right)
+		local valLbl = makeLabel(row, tostring(default), FONT_BOLD, 11, accent, UDim2.new(1, -8, 0, 4), UDim2.new(0.35, -8, 0, 16), Enum.TextXAlignment.Right)
 		valLbl.AnchorPoint = Vector2.new(1, 0)
+		bindAccent(function(c) valLbl.TextColor3 = c end)
 
 		local sliderTrack = Instance.new("Frame")
 		sliderTrack.BackgroundColor3 = Theme.Off
-		sliderTrack.Position         = UDim2.new(0, 8, 0, 32)
+		sliderTrack.Position         = UDim2.new(0, 8, 0, 28)
 		sliderTrack.Size             = UDim2.new(1, -16, 0, 5)
 		sliderTrack.BorderSizePixel  = 0
 		sliderTrack.Parent           = row
@@ -638,12 +727,13 @@ function PanelLib:CreatePanel(cfg)
 		fill.BorderSizePixel  = 0
 		fill.Parent           = sliderTrack
 		corner(fill, 3)
+		bindAccent(function(c) fill.BackgroundColor3 = c end)
 
 		local knob = Instance.new("Frame")
 		knob.BackgroundColor3 = Theme.Text
 		knob.AnchorPoint      = Vector2.new(0.5, 0.5)
 		knob.Position         = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
-		knob.Size             = UDim2.fromOffset(12, 12)
+		knob.Size             = UDim2.fromOffset(11, 11)
 		knob.BorderSizePixel  = 0
 		knob.ZIndex           = 2
 		knob.Parent           = sliderTrack
@@ -666,24 +756,18 @@ function PanelLib:CreatePanel(cfg)
 			if callback then task.spawn(callback, value) end
 		end
 
-		local function getA(x)
-			return math.clamp((x - sliderTrack.AbsolutePosition.X) / sliderTrack.AbsoluteSize.X, 0, 1)
-		end
-
 		sliderTrack.InputBegan:Connect(function(inp)
-			local t = inp.UserInputType
-			if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then
-				dragging = true; apply(getA(inp.Position.X))
+			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				apply(math.clamp((inp.Position.X - sliderTrack.AbsolutePosition.X) / sliderTrack.AbsoluteSize.X, 0, 1))
 			end
 		end)
 		sliderTrack.InputEnded:Connect(function(inp)
-			local t = inp.UserInputType
-			if t == Enum.UserInputType.MouseButton1 or t == Enum.UserInputType.Touch then dragging = false end
+			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then dragging = false end
 		end)
-		track(UserInputService.InputChanged:Connect(function(inp)
-			local t = inp.UserInputType
-			if dragging and (t == Enum.UserInputType.MouseMovement or t == Enum.UserInputType.Touch) then
-				apply(getA(inp.Position.X))
+		track(safeService("UserInputService").InputChanged:Connect(function(inp)
+			if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
+				apply(math.clamp((inp.Position.X - sliderTrack.AbsolutePosition.X) / sliderTrack.AbsoluteSize.X, 0, 1))
 			end
 		end))
 
@@ -694,31 +778,37 @@ function PanelLib:CreatePanel(cfg)
 		return api
 	end
 
-	function Panel:ProgressBar(name, maxVal, accentColor)
+	function Panel:ProgressBar(name, maxVal, overrideAccent)
 		maxVal = maxVal or 100
 		local value = 0
-		local activeColor = accentColor or accent
-		local row = newRow(46)
+		local row = newRow(42)
 
-		makeLabel(row, name or "Progress", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 5), UDim2.new(0.65, -8, 0, 16))
+		makeLabel(row, name or "Progress", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 4), UDim2.new(0.65, -8, 0, 16))
 
-		local valLbl = makeLabel(row, "0%", FONT_BOLD, 11, activeColor, UDim2.new(1, -8, 0, 5), UDim2.new(0.35, -8, 0, 16), Enum.TextXAlignment.Right)
+		local valLbl = makeLabel(row, "0%", FONT_BOLD, 11, overrideAccent or accent, UDim2.new(1, -8, 0, 4), UDim2.new(0.35, -8, 0, 16), Enum.TextXAlignment.Right)
 		valLbl.AnchorPoint = Vector2.new(1, 0)
 
 		local progressTrack = Instance.new("Frame")
 		progressTrack.BackgroundColor3 = Theme.Off
-		progressTrack.Position         = UDim2.new(0, 8, 0, 32)
+		progressTrack.Position         = UDim2.new(0, 8, 0, 26)
 		progressTrack.Size             = UDim2.new(1, -16, 0, 5)
 		progressTrack.BorderSizePixel  = 0
 		progressTrack.Parent           = row
 		corner(progressTrack, 3)
 
 		local fill = Instance.new("Frame")
-		fill.BackgroundColor3 = activeColor
+		fill.BackgroundColor3 = overrideAccent or accent
 		fill.Size             = UDim2.new(0, 0, 1, 0)
 		fill.BorderSizePixel  = 0
 		fill.Parent           = progressTrack
 		corner(fill, 3)
+
+		if not overrideAccent then
+			bindAccent(function(c)
+				fill.BackgroundColor3 = c
+				valLbl.TextColor3 = c
+			end)
+		end
 
 		local api = {}
 		function api:Set(v)
@@ -755,6 +845,7 @@ function PanelLib:CreatePanel(cfg)
 		makeLabel(header, name or "Dropdown", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 0), UDim2.new(0.5, -8, 1, 0))
 
 		local selLbl = makeLabel(header, tostring(selected) .. "  ▼", FONT_MED, 11, accent, UDim2.new(0.5, 0, 0, 0), UDim2.new(0.5, -8, 1, 0), Enum.TextXAlignment.Right)
+		bindAccent(function(c) selLbl.TextColor3 = c end)
 
 		local listFrame = Instance.new("Frame")
 		listFrame.BackgroundTransparency = 1
@@ -816,6 +907,100 @@ function PanelLib:CreatePanel(cfg)
 		return api
 	end
 
+	function Panel:ColorPicker(name, defaultColor, callback)
+		local color = defaultColor or Color3.fromRGB(255, 255, 255)
+		local h, s, v = color:ToHSV()
+		local expanded = false
+
+		local container = Instance.new("Frame")
+		container.BackgroundColor3 = Theme.Row
+		container.BorderSizePixel  = 0
+		container.ClipsDescendants = true
+		container.Size             = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		container.LayoutOrder      = nextOrder()
+		container.Parent           = body
+		corner(container, 6)
+
+		local header = Instance.new("TextButton")
+		header.BackgroundTransparency = 1
+		header.Text = ""
+		header.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		header.Parent = container
+
+		makeLabel(header, name or "Color Picker", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 0), UDim2.new(1, -40, 1, 0))
+
+		local preview = Instance.new("Frame")
+		preview.BackgroundColor3 = color
+		preview.Position = UDim2.new(1, -28, 0.5, -8)
+		preview.Size = UDim2.fromOffset(20, 16)
+		preview.Parent = header
+		corner(preview, 4)
+
+		local pickerFrame = Instance.new("Frame")
+		pickerFrame.BackgroundTransparency = 1
+		pickerFrame.Position = UDim2.new(0, 8, 0, ROW_HEIGHT)
+		pickerFrame.Size = UDim2.new(1, -16, 0, 24)
+		pickerFrame.Parent = container
+
+		local hueTrack = Instance.new("Frame")
+		hueTrack.Size = UDim2.new(1, 0, 0, 12)
+		hueTrack.Position = UDim2.new(0, 0, 0, 6)
+		hueTrack.Parent = pickerFrame
+		corner(hueTrack, 3)
+
+		local gradient = Instance.new("UIGradient")
+		gradient.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+			ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
+			ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0, 255, 0)),
+			ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+			ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0, 0, 255)),
+			ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0, 255)),
+			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+		})
+		gradient.Parent = hueTrack
+
+		local dragging = false
+		local function updateHue(inputX)
+			local alpha = math.clamp((inputX - hueTrack.AbsolutePosition.X) / hueTrack.AbsoluteSize.X, 0, 1)
+			h = alpha
+			color = Color3.fromHSV(h, s, v)
+			preview.BackgroundColor3 = color
+			if callback then task.spawn(callback, color) end
+		end
+
+		hueTrack.InputBegan:Connect(function(inp)
+			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+				dragging = true
+				updateHue(inp.Position.X)
+			end
+		end)
+		hueTrack.InputEnded:Connect(function(inp)
+			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then dragging = false end
+		end)
+		track(safeService("UserInputService").InputChanged:Connect(function(inp)
+			if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
+				updateHue(inp.Position.X)
+			end
+		end))
+
+		header.Activated:Connect(function()
+			expanded = not expanded
+			tween(container, TI, { Size = UDim2.new(1, 0, 0, expanded and (ROW_HEIGHT + 28) or ROW_HEIGHT) })
+		end)
+
+		local api = {}
+		function api:Set(c3)
+			color = c3
+			h, s, v = color:ToHSV()
+			preview.BackgroundColor3 = color
+			if callback then task.spawn(callback, color) end
+		end
+		function api:Get() return color end
+		api.Instance = container
+		return api
+	end
+
 	function Panel:TextBox(placeholder, default, callback)
 		local row = newRow(ROW_HEIGHT)
 
@@ -865,17 +1050,24 @@ function PanelLib:CreatePanel(cfg)
 		keyBtn.Parent           = row
 		corner(keyBtn, 4)
 
+		bindAccent(function(c) keyBtn.TextColor3 = c end)
+
 		keyBtn.Activated:Connect(function()
 			binding = true
 			keyBtn.Text = "..."
 		end)
 
-		track(UserInputService.InputBegan:Connect(function(inp, gpe)
+		track(safeService("UserInputService").InputBegan:Connect(function(inp, gpe)
 			if binding then
 				if inp.UserInputType == Enum.UserInputType.Keyboard then
-					currentKey = inp.KeyCode
-					binding = false
-					keyBtn.Text = currentKey.Name
+					if inp.KeyCode == Enum.KeyCode.Escape then
+						binding = false
+						keyBtn.Text = currentKey.Name
+					else
+						currentKey = inp.KeyCode
+						binding = false
+						keyBtn.Text = currentKey.Name
+					end
 				end
 			elseif not gpe and inp.KeyCode == currentKey then
 				if callback then task.spawn(callback, currentKey) end
