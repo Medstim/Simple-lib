@@ -8,7 +8,7 @@ A lightweight Roblox Lua library for building clean, dark floating panels. No de
 
 ```lua
 local PanelLib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/YOUR_NAME/YOUR_REPO/main/PanelLib.lua"
+    "[https://raw.githubusercontent.com/YOUR_NAME/YOUR_REPO/main/PanelLib.lua](https://raw.githubusercontent.com/Medstim/Simple-lib/refs/heads/main/MainSrc.lua)"
 ))()
 ```
 
