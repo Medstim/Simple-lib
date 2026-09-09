@@ -691,7 +691,7 @@ function PanelLib:CreatePanel(cfg)
 		mlbl.TextWrapped = true
 
 		task.delay(duration, function()
-			tween(notif, TI, { BackgroundTransparency = 1 }):Completed:Connect(function()
+			tween(notif, TI, { BackgroundTransparency = 1 }).Completed:Connect(function()
 				notif:Destroy()
 			end)
 		end)
