@@ -1121,6 +1121,422 @@ end
 		return api
 	end
 
+	function Panel:MultiDropdown(name, options, defaults, callback)
+		options = options or {}
+		defaults = defaults or {}
+
+		-- Convert defaults into a lookup table.
+		-- This makes checking whether an item is selected very fast.
+		local selected = {}
+
+		for _, value in ipairs(defaults) do
+			selected[value] = true
+		end
+
+		local isOpen = false
+
+		--------------------------------------------------------------
+		-- Container
+		--------------------------------------------------------------
+
+		local container = Instance.new("Frame")
+		container.Name = "MultiDropdown"
+		container.BackgroundColor3 = Theme.Row
+		container.BorderSizePixel = 0
+		container.ClipsDescendants = true
+		container.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		container.LayoutOrder = nextOrder()
+		container.Parent = body
+
+		corner(container, 6)
+
+		--------------------------------------------------------------
+		-- Header
+		--------------------------------------------------------------
+
+		local header = Instance.new("TextButton")
+		header.BackgroundTransparency = 1
+		header.Text = ""
+		header.AutoButtonColor = false
+		header.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		header.ZIndex = 2
+		header.Parent = container
+
+		makeLabel(
+			header,
+			name or "Multi Dropdown",
+			FONT_MED,
+			11,
+			Theme.Text,
+			UDim2.new(0, 8, 0, 0),
+			UDim2.new(0.55, -8, 1, 0)
+		)
+
+		local selectedLabel = makeLabel(
+			header,
+			"",
+			FONT_MED,
+			11,
+			accent,
+			UDim2.new(0.45, 0, 0, 0),
+			UDim2.new(0.55, -8, 1, 0),
+			Enum.TextXAlignment.Right
+		)
+
+		bindAccent(function(c)
+			selectedLabel.TextColor3 = c
+		end)
+
+		--------------------------------------------------------------
+		-- Dropdown List Holder
+		--------------------------------------------------------------
+
+		local listHolder = Instance.new("Frame")
+		listHolder.BackgroundTransparency = 1
+		listHolder.Position = UDim2.new(0, 0, 0, ROW_HEIGHT)
+		listHolder.Size = UDim2.new(1, 0, 0, 0)
+		listHolder.Parent = container
+
+		local listFrame = Instance.new("ScrollingFrame")
+		listFrame.BackgroundTransparency = 1
+		listFrame.BorderSizePixel = 0
+		listFrame.Position = UDim2.new(0, 5, 0, 0)
+		listFrame.Size = UDim2.new(1, -10, 1, 0)
+		listFrame.CanvasSize = UDim2.new(0, 0, 0, #options * ROW_HEIGHT)
+		listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		listFrame.ScrollBarThickness = 3
+		listFrame.ScrollBarImageColor3 = accent
+		listFrame.ScrollBarImageTransparency = 0.15
+		listFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+		listFrame.Parent = listHolder
+
+		bindAccent(function(c)
+			listFrame.ScrollBarImageColor3 = c
+		end)
+
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		listLayout.Padding = UDim.new(0, 2)
+		listLayout.Parent = listFrame
+
+		local listPadding = Instance.new("UIPadding")
+		listPadding.PaddingTop = UDim.new(0, 2)
+		listPadding.PaddingBottom = UDim.new(0, 2)
+		listPadding.Parent = listFrame
+
+		--------------------------------------------------------------
+		-- Helpers
+		--------------------------------------------------------------
+
+		local optionButtons = {}
+
+		local function getSelectedTable()
+			local result = {}
+
+			for _, option in ipairs(options) do
+				if selected[option] then
+					table.insert(result, option)
+				end
+			end
+
+			return result
+		end
+
+		local function getSelectedText()
+			local count = 0
+
+			for _, option in ipairs(options) do
+				if selected[option] then
+					count += 1
+				end
+			end
+
+			if count == 0 then
+				return "None"
+			elseif count == #options then
+				return "All"
+			elseif count == 1 then
+				for _, option in ipairs(options) do
+					if selected[option] then
+						return tostring(option)
+					end
+				end
+			else
+				return tostring(count) .. " selected"
+			end
+
+			return "None"
+		end
+
+		local function updateOptionVisuals()
+			for option, data in pairs(optionButtons) do
+				local active = selected[option]
+
+				data.Button.BackgroundColor3 =
+					active and Theme.RowHover or Theme.Row
+
+				data.Label.TextColor3 =
+					active and accent or Theme.SubText
+
+				data.Check.Text =
+					active and "✓" or ""
+			end
+		end
+
+		local function updateDropdown()
+			local contentHeight = math.max(
+				0,
+				(#options * ROW_HEIGHT) + 4
+			)
+
+			local visibleHeight = math.min(
+				contentHeight,
+				DROPDOWN_MAX_HEIGHT
+			)
+
+			local targetHeight =
+				isOpen
+				and (ROW_HEIGHT + visibleHeight)
+				or ROW_HEIGHT
+
+			listHolder.Size = UDim2.new(
+				1,
+				0,
+				0,
+				visibleHeight
+			)
+
+			tween(
+				container,
+				TI_S,
+				{
+					Size = UDim2.new(
+						1,
+						0,
+						0,
+						targetHeight
+					)
+				}
+			)
+
+			selectedLabel.Text =
+				getSelectedText()
+				.. (isOpen and "  ▲" or "  ▼")
+
+			updateOptionVisuals()
+
+			if not isOpen then
+				listFrame.CanvasPosition =
+					Vector2.new(0, 0)
+			end
+		end
+
+		--------------------------------------------------------------
+		-- Create Options
+		--------------------------------------------------------------
+
+		for i, option in ipairs(options) do
+			local optionButton = Instance.new("TextButton")
+
+			optionButton.BackgroundColor3 =
+				selected[option]
+				and Theme.RowHover
+				or Theme.Row
+
+			optionButton.AutoButtonColor = false
+			optionButton.BorderSizePixel = 0
+			optionButton.Text = ""
+			optionButton.Size =
+				UDim2.new(1, 0, 0, ROW_HEIGHT)
+			optionButton.LayoutOrder = i
+			optionButton.Parent = listFrame
+
+			corner(optionButton, 4)
+
+			----------------------------------------------------------
+			-- Option Label
+			----------------------------------------------------------
+
+			local optionLabel = makeLabel(
+				optionButton,
+				tostring(option),
+				FONT_REG,
+				11,
+				selected[option]
+					and accent
+					or Theme.SubText,
+				UDim2.new(0, 28, 0, 0),
+				UDim2.new(1, -36, 1, 0)
+			)
+
+			----------------------------------------------------------
+			-- Checkmark
+			----------------------------------------------------------
+
+			local check = makeLabel(
+				optionButton,
+				selected[option] and "✓" or "",
+				FONT_BOLD,
+				12,
+				accent,
+				UDim2.new(1, -24, 0, 0),
+				UDim2.new(0, 18, 1, 0),
+				Enum.TextXAlignment.Right
+			)
+
+			bindAccent(function(c)
+				if selected[option] then
+					optionLabel.TextColor3 = c
+					check.TextColor3 = c
+				end
+			end)
+
+			----------------------------------------------------------
+			-- Padding
+			----------------------------------------------------------
+
+			local pad = Instance.new("UIPadding")
+			pad.PaddingLeft = UDim.new(0, 7)
+			pad.PaddingRight = UDim.new(0, 7)
+			pad.Parent = optionButton
+
+			optionButtons[option] = {
+				Button = optionButton,
+				Label = optionLabel,
+				Check = check,
+			}
+
+			----------------------------------------------------------
+			-- Hover
+			----------------------------------------------------------
+
+			optionButton.MouseEnter:Connect(function()
+				tween(
+					optionButton,
+					TI,
+					{
+						BackgroundColor3 = Theme.RowHover
+					}
+				)
+			end)
+
+			optionButton.MouseLeave:Connect(function()
+				local active = selected[option]
+
+				tween(
+					optionButton,
+					TI,
+					{
+						BackgroundColor3 =
+							active
+							and Theme.RowHover
+							or Theme.Row
+					}
+				)
+			end)
+
+			----------------------------------------------------------
+			-- Selection
+			----------------------------------------------------------
+
+			optionButton.Activated:Connect(function()
+				selected[option] = not selected[option]
+
+				updateDropdown()
+
+				if callback then
+					local result = getSelectedTable()
+
+					task.spawn(
+						callback,
+						result
+					)
+				end
+			end)
+		end
+
+		--------------------------------------------------------------
+		-- Header
+		--------------------------------------------------------------
+
+		header.MouseEnter:Connect(function()
+			tween(
+				container,
+				TI,
+				{
+					BackgroundColor3 = Theme.RowHover
+				}
+			)
+		end)
+
+		header.MouseLeave:Connect(function()
+			tween(
+				container,
+				TI,
+				{
+					BackgroundColor3 = Theme.Row
+				}
+			)
+		end)
+
+		header.Activated:Connect(function()
+			isOpen = not isOpen
+			updateDropdown()
+		end)
+
+		--------------------------------------------------------------
+		-- API
+		--------------------------------------------------------------
+
+		local api = {}
+
+		function api:Set(values)
+			table.clear(selected)
+
+			if type(values) == "table" then
+				for _, value in ipairs(values) do
+					selected[value] = true
+				end
+			end
+
+			updateDropdown()
+
+			if callback then
+				task.spawn(
+					callback,
+					getSelectedTable()
+				)
+			end
+		end
+
+		function api:Get()
+			return getSelectedTable()
+		end
+
+		function api:Toggle(value)
+			if selected[value] then
+				selected[value] = nil
+			else
+				selected[value] = true
+			end
+
+			updateDropdown()
+
+			if callback then
+				task.spawn(
+					callback,
+					getSelectedTable()
+				)
+			end
+		end
+
+		api.Instance = container
+
+		updateDropdown()
+
+		return api
+	end
+
 	function Panel:ColorPicker(name, defaultColor, callback)
 		local color = defaultColor or Color3.fromRGB(255, 255, 255)
 		local h, s, v = color:ToHSV()
