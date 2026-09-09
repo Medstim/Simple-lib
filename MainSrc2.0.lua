@@ -1,8 +1,3 @@
---[[
-    Enhanced PanelLib UI Framework
-    Features: Responsive layouts, dynamic theme updates, custom widgets, & core protections.
---]]
-
 local TweenService     = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local CoreGui          = game:GetService("CoreGui")
