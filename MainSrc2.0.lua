@@ -40,6 +40,7 @@ local FONT_REG  = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.Font
 local PADDING    = 10
 local ROW_HEIGHT = 30
 local ROW_GAP    = 5
+local DROPDOWN_MAX_HEIGHT = 180
 local TI         = TweenInfo.new(0.15, Enum.EasingStyle.Quad,  Enum.EasingDirection.Out)
 local TI_S       = TweenInfo.new(0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
 
@@ -254,39 +255,172 @@ function PanelLib:CreatePanel(cfg)
 
 	makeLabel(settingsOverlay, "ACCENT COLOR", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 14))
 
+	local accentPicker = Instance.new("Frame")
+	accentPicker.BackgroundTransparency = 1
+	accentPicker.Size = UDim2.new(1, 0, 0, 94)
+	accentPicker.Parent = settingsOverlay
+
+	local svFrame = Instance.new("Frame")
+	svFrame.BackgroundColor3 = Color3.fromHSV(accent:ToHSV())
+	svFrame.BorderSizePixel = 0
+	svFrame.Size = UDim2.new(1, 0, 0, 68)
+	svFrame.Parent = accentPicker
+	corner(svFrame, 6)
+	stroke(svFrame, Theme.Stroke, 0.45, 1)
+
+	local svWhite = Instance.new("UIGradient")
+	svWhite.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+		ColorSequenceKeypoint.new(1, accent),
+	})
+	svWhite.Parent = svFrame
+
+	local svBlack = Instance.new("Frame")
+	svBlack.BackgroundTransparency = 1
+	svBlack.BorderSizePixel = 0
+	svBlack.Size = UDim2.fromScale(1, 1)
+	svBlack.Parent = svFrame
+	corner(svBlack, 6)
+
+	local svBlackGradient = Instance.new("UIGradient")
+	svBlackGradient.Rotation = 90
+	svBlackGradient.Color = ColorSequence.new(Color3.new(0, 0, 0), Color3.new(0, 0, 0))
+	svBlackGradient.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	svBlackGradient.Parent = svBlack
+
+	local svCursor = Instance.new("Frame")
+	svCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+	svCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+	svCursor.Size = UDim2.fromOffset(10, 10)
+	svCursor.BorderSizePixel = 0
+	svCursor.ZIndex = 3
+	svCursor.Parent = svFrame
+	corner(svCursor, 5)
+	stroke(svCursor, Color3.new(0, 0, 0), 0.15, 1)
+
+	local hueTrack = Instance.new("Frame")
+	hueTrack.BackgroundColor3 = Color3.new(1, 1, 1)
+	hueTrack.BorderSizePixel = 0
+	hueTrack.Position = UDim2.new(0, 0, 0, 76)
+	hueTrack.Size = UDim2.new(1, 0, 0, 10)
+	hueTrack.Parent = accentPicker
+	corner(hueTrack, 5)
+
+	local hueGradient = Instance.new("UIGradient")
+	hueGradient.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
+		ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
+		ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0, 255, 0)),
+		ColorSequenceKeypoint.new(0.5, Color3.fromRGB(0, 255, 255)),
+		ColorSequenceKeypoint.new(0.667, Color3.fromRGB(0, 0, 255)),
+		ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0, 255)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
+	})
+	hueGradient.Parent = hueTrack
+
+	local hueCursor = Instance.new("Frame")
+	hueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+	hueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+	hueCursor.Size = UDim2.fromOffset(8, 16)
+	hueCursor.BorderSizePixel = 0
+	hueCursor.ZIndex = 3
+	hueCursor.Parent = hueTrack
+	corner(hueCursor, 4)
+	stroke(hueCursor, Color3.new(0, 0, 0), 0.2, 1)
+
+	local h, s, v = accent:ToHSV()
+	local accentDragging = nil
+
+	local function updateAccentPicker(color)
+		h, s, v = color:ToHSV()
+		svWhite.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+			ColorSequenceKeypoint.new(1, Color3.fromHSV(h, 1, 1)),
+		})
+		svCursor.Position = UDim2.new(s, 0, 1 - v, 0)
+		hueCursor.Position = UDim2.new(h, 0, 0.5, 0)
+	end
+
+	local function applyAccentPicker()
+		local color = Color3.fromHSV(h, s, v)
+		setAccent(color)
+		updateAccentPicker(color)
+	end
+
+	svFrame.InputBegan:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+			accentDragging = "SV"
+			s = math.clamp((inp.Position.X - svFrame.AbsolutePosition.X) / svFrame.AbsoluteSize.X, 0, 1)
+			v = 1 - math.clamp((inp.Position.Y - svFrame.AbsolutePosition.Y) / svFrame.AbsoluteSize.Y, 0, 1)
+			applyAccentPicker()
+		end
+	end)
+
+	hueTrack.InputBegan:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+			accentDragging = "Hue"
+			h = math.clamp((inp.Position.X - hueTrack.AbsolutePosition.X) / hueTrack.AbsoluteSize.X, 0, 1)
+			applyAccentPicker()
+		end
+	end)
+
+	track(safeService("UserInputService").InputChanged:Connect(function(inp)
+		if not accentDragging then return end
+		if inp.UserInputType ~= Enum.UserInputType.MouseMovement and inp.UserInputType ~= Enum.UserInputType.Touch then return end
+		if accentDragging == "SV" then
+			s = math.clamp((inp.Position.X - svFrame.AbsolutePosition.X) / svFrame.AbsoluteSize.X, 0, 1)
+			v = 1 - math.clamp((inp.Position.Y - svFrame.AbsolutePosition.Y) / svFrame.AbsoluteSize.Y, 0, 1)
+		else
+			h = math.clamp((inp.Position.X - hueTrack.AbsolutePosition.X) / hueTrack.AbsoluteSize.X, 0, 1)
+		end
+		applyAccentPicker()
+	end))
+
+	track(safeService("UserInputService").InputEnded:Connect(function(inp)
+		if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+			accentDragging = nil
+		end
+	end))
+
 	local colourGrid = Instance.new("Frame")
 	colourGrid.BackgroundTransparency = 1
-	colourGrid.Size                   = UDim2.new(1, 0, 0, 0)
-	colourGrid.AutomaticSize          = Enum.AutomaticSize.Y
-	colourGrid.Parent                 = settingsOverlay
+	colourGrid.Size = UDim2.new(1, 0, 0, 0)
+	colourGrid.AutomaticSize = Enum.AutomaticSize.Y
+	colourGrid.Parent = settingsOverlay
 
 	local colourGridLayout = Instance.new("UIGridLayout")
-	colourGridLayout.CellSize             = UDim2.new(0, 23, 0, 23)
-	colourGridLayout.CellPadding          = UDim2.new(0, 5, 0, 5)
-	colourGridLayout.SortOrder            = Enum.SortOrder.LayoutOrder
+	colourGridLayout.CellSize = UDim2.new(0, 23, 0, 23)
+	colourGridLayout.CellPadding = UDim2.new(0, 5, 0, 5)
+	colourGridLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	colourGridLayout.HorizontalAlignment = Enum.HorizontalAlignment.Left
-	colourGridLayout.Parent               = colourGrid
+	colourGridLayout.Parent = colourGrid
 
 	local activeSwatchStroke = nil
-	local presetOrder        = { "Default", "Pink", "Green", "Red", "Purple", "Orange", "Teal", "White" }
+	local presetOrder = { "Default", "Pink", "Green", "Red", "Purple", "Orange", "Teal", "White" }
 
-	for i, name in ipairs(presetOrder) do
-		local color  = Presets[name]
+	for i, presetName in ipairs(presetOrder) do
+		local presetColor = Presets[presetName]
 		local swatch = Instance.new("TextButton")
-		swatch.BackgroundColor3 = color
-		swatch.BorderSizePixel  = 0
-		swatch.Text             = ""
-		swatch.AutoButtonColor  = false
-		swatch.LayoutOrder      = i
-		swatch.Parent           = colourGrid
+		swatch.BackgroundColor3 = presetColor
+		swatch.BorderSizePixel = 0
+		swatch.Text = ""
+		swatch.AutoButtonColor = false
+		swatch.LayoutOrder = i
+		swatch.Parent = colourGrid
 		corner(swatch, 5)
 
 		swatch.Activated:Connect(function()
-			setAccent(color)
+			setAccent(presetColor)
+			updateAccentPicker(presetColor)
 			if activeSwatchStroke then activeSwatchStroke:Destroy() end
-			activeSwatchStroke = stroke(swatch, Color3.new(1,1,1), 0, 2)
+			activeSwatchStroke = stroke(swatch, Color3.new(1, 1, 1), 0, 2)
 		end)
 	end
+
+	updateAccentPicker(accent)
 
 	makeLabel(settingsOverlay, "OPACITY", FONT_MED, 10, Theme.SubText, nil, UDim2.new(1, 0, 0, 14))
 
@@ -366,29 +500,50 @@ function PanelLib:CreatePanel(cfg)
 	local posLabels = { "Top Right", "Top Left", "Bottom Right", "Bottom Left" }
 	local posKeys   = { "topright",  "topleft",  "bottomright",  "bottomleft"  }
 
+	local positionButtons = {}
+
+	local function refreshPositionButtons()
+		for key, button in pairs(positionButtons) do
+			local selected = key == position
+			button.BackgroundColor3 = selected and Theme.RowHover or Theme.Row
+			button.TextColor3 = selected and accent or Theme.SubText
+		end
+	end
+
 	for i, lbl in ipairs(posLabels) do
 		local pb = Instance.new("TextButton")
 		pb.BackgroundColor3 = Theme.Row
-		pb.AutoButtonColor  = false
-		pb.BorderSizePixel  = 0
-		pb.Text             = lbl
-		pb.FontFace         = FONT_MED
-		pb.TextColor3       = Theme.SubText
-		pb.TextSize         = 10
-		pb.LayoutOrder      = i
-		pb.Parent           = posGrid
+		pb.AutoButtonColor = false
+		pb.BorderSizePixel = 0
+		pb.Text = lbl
+		pb.FontFace = FONT_MED
+		pb.TextColor3 = Theme.SubText
+		pb.TextSize = 10
+		pb.LayoutOrder = i
+		pb.Parent = posGrid
 		corner(pb, 5)
+		positionButtons[posKeys[i]] = pb
 
-		pb.MouseEnter:Connect(function() tween(pb, TI, { BackgroundColor3 = Theme.RowHover }) end)
-		pb.MouseLeave:Connect(function() tween(pb, TI, { BackgroundColor3 = Theme.Row }) end)
+		pb.MouseEnter:Connect(function()
+			tween(pb, TI, { BackgroundColor3 = Theme.RowHover })
+		end)
+		pb.MouseLeave:Connect(function()
+			local selected = position == posKeys[i]
+			tween(pb, TI, { BackgroundColor3 = selected and Theme.RowHover or Theme.Row })
+		end)
 		pb.Activated:Connect(function()
 			position = posKeys[i]
 			root.Position = anchorPosition(posKeys[i], width)
-			tween(pb, TI, { TextColor3 = accent })
-			task.wait(0.3)
-			tween(pb, TI, { TextColor3 = Theme.SubText })
+			refreshPositionButtons()
 		end)
 	end
+
+	bindAccent(function(c)
+		for key, button in pairs(positionButtons) do
+			if key == position then button.TextColor3 = c end
+		end
+	end)
+	refreshPositionButtons()
 
 	-- Title Bar Setup
 	local titleBar
@@ -716,9 +871,11 @@ function PanelLib:CreatePanel(cfg)
 		sliderTrack.Parent           = row
 		corner(sliderTrack, 3)
 
+		local initialAlpha = (max ~= min) and ((default - min) / (max - min)) or 0
+
 		local fill = Instance.new("Frame")
 		fill.BackgroundColor3 = accent
-		fill.Size             = UDim2.new((default - min) / (max - min), 0, 1, 0)
+		fill.Size             = UDim2.new(initialAlpha, 0, 1, 0)
 		fill.BorderSizePixel  = 0
 		fill.Parent           = sliderTrack
 		corner(fill, 3)
@@ -727,7 +884,7 @@ function PanelLib:CreatePanel(cfg)
 		local knob = Instance.new("Frame")
 		knob.BackgroundColor3 = Theme.Text
 		knob.AnchorPoint      = Vector2.new(0.5, 0.5)
-		knob.Position         = UDim2.new((default - min) / (max - min), 0, 0.5, 0)
+		knob.Position         = UDim2.new(initialAlpha, 0, 0.5, 0)
 		knob.Size             = UDim2.fromOffset(11, 11)
 		knob.BorderSizePixel  = 0
 		knob.ZIndex           = 2
@@ -767,7 +924,10 @@ function PanelLib:CreatePanel(cfg)
 		end))
 
 		local api = {}
-		function api:Set(v) apply((math.clamp(v, min, max) - min) / (max - min)) end
+		function api:Set(v)
+			local alpha = (max ~= min) and ((math.clamp(v, min, max) - min) / (max - min)) or 0
+			apply(alpha)
+		end
 		function api:Get() return value end
 		api.Instance = row
 		return api
@@ -824,68 +984,116 @@ function PanelLib:CreatePanel(cfg)
 
 		local container = Instance.new("Frame")
 		container.BackgroundColor3 = Theme.Row
-		container.BorderSizePixel  = 0
+		container.BorderSizePixel = 0
 		container.ClipsDescendants = true
-		container.Size             = UDim2.new(1, 0, 0, ROW_HEIGHT)
-		container.LayoutOrder      = nextOrder()
-		container.Parent           = body
+		container.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		container.LayoutOrder = nextOrder()
+		container.Parent = body
 		corner(container, 6)
 
 		local header = Instance.new("TextButton")
 		header.BackgroundTransparency = 1
-		header.Text                   = ""
-		header.Size                   = UDim2.new(1, 0, 0, ROW_HEIGHT)
-		header.Parent                 = container
+		header.Text = ""
+		header.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		header.ZIndex = 2
+		header.Parent = container
 
-		makeLabel(header, name or "Dropdown", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 0), UDim2.new(0.5, -8, 1, 0))
+		makeLabel(header, name or "Dropdown", FONT_MED, 11, Theme.Text,
+			UDim2.new(0, 8, 0, 0), UDim2.new(0.5, -8, 1, 0))
 
-		local selLbl = makeLabel(header, tostring(selected) .. "  ▼", FONT_MED, 11, accent, UDim2.new(0.5, 0, 0, 0), UDim2.new(0.5, -8, 1, 0), Enum.TextXAlignment.Right)
+		local selLbl = makeLabel(header, tostring(selected) .. "  ▼", FONT_MED, 11, accent,
+			UDim2.new(0.5, 0, 0, 0), UDim2.new(0.5, -8, 1, 0), Enum.TextXAlignment.Right)
 		bindAccent(function(c) selLbl.TextColor3 = c end)
 
-		local listFrame = Instance.new("Frame")
+		local listHolder = Instance.new("Frame")
+		listHolder.BackgroundTransparency = 1
+		listHolder.Position = UDim2.new(0, 0, 0, ROW_HEIGHT)
+		listHolder.Size = UDim2.new(1, 0, 0, 0)
+		listHolder.Parent = container
+
+		local listFrame = Instance.new("ScrollingFrame")
 		listFrame.BackgroundTransparency = 1
-		listFrame.Position               = UDim2.new(0, 0, 0, ROW_HEIGHT)
-		listFrame.Size                   = UDim2.new(1, 0, 0, #options * ROW_HEIGHT)
-		listFrame.Parent                 = container
+		listFrame.BorderSizePixel = 0
+		listFrame.Position = UDim2.new(0, 5, 0, 0)
+		listFrame.Size = UDim2.new(1, -10, 1, 0)
+		listFrame.CanvasSize = UDim2.new(0, 0, 0, #options * ROW_HEIGHT)
+		listFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		listFrame.ScrollBarThickness = 3
+		listFrame.ScrollBarImageColor3 = accent
+		listFrame.ScrollBarImageTransparency = 0.15
+		listFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+		listFrame.Parent = listHolder
+		bindAccent(function(c) listFrame.ScrollBarImageColor3 = c end)
 
 		local listLayout = Instance.new("UIListLayout")
 		listLayout.SortOrder = Enum.SortOrder.LayoutOrder
-		listLayout.Parent    = listFrame
+		listLayout.Padding = UDim.new(0, 2)
+		listLayout.Parent = listFrame
+
+		local listPadding = Instance.new("UIPadding")
+		listPadding.PaddingTop = UDim.new(0, 2)
+		listPadding.PaddingBottom = UDim.new(0, 2)
+		listPadding.Parent = listFrame
+
+		local optionButtons = {}
+
+		local function updateOptionVisuals()
+			for opt, button in pairs(optionButtons) do
+				local active = opt == selected
+				button.TextColor3 = active and accent or Theme.SubText
+				button.BackgroundColor3 = active and Theme.RowHover or Theme.Row
+			end
+		end
 
 		local function updateDropdown()
-			local targetH = isOpen and (ROW_HEIGHT + #options * ROW_HEIGHT) or ROW_HEIGHT
-			tween(container, TI, { Size = UDim2.new(1, 0, 0, targetH) })
+			local contentHeight = math.max(0, (#options * ROW_HEIGHT) + 4)
+			local visibleHeight = math.min(contentHeight, DROPDOWN_MAX_HEIGHT)
+			local targetH = isOpen and (ROW_HEIGHT + visibleHeight) or ROW_HEIGHT
+			listHolder.Size = UDim2.new(1, 0, 0, visibleHeight)
+			tween(container, TI_S, { Size = UDim2.new(1, 0, 0, targetH) })
 			selLbl.Text = tostring(selected) .. (isOpen and "  ▲" or "  ▼")
+			updateOptionVisuals()
+			if not isOpen then listFrame.CanvasPosition = Vector2.new(0, 0) end
 		end
 
 		for i, opt in ipairs(options) do
 			local optBtn = Instance.new("TextButton")
-			optBtn.BackgroundColor3 = Theme.Row
-			optBtn.AutoButtonColor  = false
-			optBtn.BorderSizePixel  = 0
-			optBtn.Text             = tostring(opt)
-			optBtn.FontFace         = FONT_REG
-			optBtn.TextColor3       = (opt == selected) and accent or Theme.SubText
-			optBtn.TextSize         = 11
-			optBtn.Size             = UDim2.new(1, 0, 0, ROW_HEIGHT)
-			optBtn.LayoutOrder      = i
-			optBtn.Parent           = listFrame
+			optBtn.BackgroundColor3 = opt == selected and Theme.RowHover or Theme.Row
+			optBtn.AutoButtonColor = false
+			optBtn.BorderSizePixel = 0
+			optBtn.Text = tostring(opt)
+			optBtn.FontFace = FONT_REG
+			optBtn.TextColor3 = opt == selected and accent or Theme.SubText
+			optBtn.TextSize = 11
+			optBtn.TextXAlignment = Enum.TextXAlignment.Left
+			optBtn.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+			optBtn.LayoutOrder = i
+			optBtn.Parent = listFrame
+			corner(optBtn, 4)
+			optionButtons[opt] = optBtn
 
-			optBtn.MouseEnter:Connect(function() tween(optBtn, TI, { BackgroundColor3 = Theme.RowHover }) end)
-			optBtn.MouseLeave:Connect(function() tween(optBtn, TI, { BackgroundColor3 = Theme.Row }) end)
+			local pad = Instance.new("UIPadding")
+			pad.PaddingLeft = UDim.new(0, 7)
+			pad.PaddingRight = UDim.new(0, 7)
+			pad.Parent = optBtn
+
+			optBtn.MouseEnter:Connect(function()
+				tween(optBtn, TI, { BackgroundColor3 = Theme.RowHover })
+			end)
+			optBtn.MouseLeave:Connect(function()
+				local active = opt == selected
+				tween(optBtn, TI, { BackgroundColor3 = active and Theme.RowHover or Theme.Row })
+			end)
 			optBtn.Activated:Connect(function()
 				selected = opt
 				isOpen = false
 				updateDropdown()
-				for _, child in ipairs(listFrame:GetChildren()) do
-					if child:IsA("TextButton") then
-						child.TextColor3 = (child.Text == tostring(selected)) and accent or Theme.SubText
-					end
-				end
 				if callback then task.spawn(callback, selected) end
 			end)
 		end
 
+		header.MouseEnter:Connect(function() tween(container, TI, { BackgroundColor3 = Theme.RowHover }) end)
+		header.MouseLeave:Connect(function() tween(container, TI, { BackgroundColor3 = Theme.Row }) end)
 		header.Activated:Connect(function()
 			isOpen = not isOpen
 			updateDropdown()
@@ -895,6 +1103,7 @@ function PanelLib:CreatePanel(cfg)
 		function api:Set(v)
 			selected = v
 			selLbl.Text = tostring(selected) .. (isOpen and "  ▲" or "  ▼")
+			updateOptionVisuals()
 			if callback then task.spawn(callback, selected) end
 		end
 		function api:Get() return selected end
@@ -909,42 +1118,88 @@ function PanelLib:CreatePanel(cfg)
 
 		local container = Instance.new("Frame")
 		container.BackgroundColor3 = Theme.Row
-		container.BorderSizePixel  = 0
+		container.BorderSizePixel = 0
 		container.ClipsDescendants = true
-		container.Size             = UDim2.new(1, 0, 0, ROW_HEIGHT)
-		container.LayoutOrder      = nextOrder()
-		container.Parent           = body
+		container.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		container.LayoutOrder = nextOrder()
+		container.Parent = body
 		corner(container, 6)
 
 		local header = Instance.new("TextButton")
 		header.BackgroundTransparency = 1
 		header.Text = ""
 		header.Size = UDim2.new(1, 0, 0, ROW_HEIGHT)
+		header.ZIndex = 2
 		header.Parent = container
 
-		makeLabel(header, name or "Color Picker", FONT_MED, 11, Theme.Text, UDim2.new(0, 8, 0, 0), UDim2.new(1, -40, 1, 0))
+		makeLabel(header, name or "Color Picker", FONT_MED, 11, Theme.Text,
+			UDim2.new(0, 8, 0, 0), UDim2.new(1, -40, 1, 0))
 
 		local preview = Instance.new("Frame")
 		preview.BackgroundColor3 = color
 		preview.Position = UDim2.new(1, -28, 0.5, -8)
 		preview.Size = UDim2.fromOffset(20, 16)
+		preview.BorderSizePixel = 0
 		preview.Parent = header
 		corner(preview, 4)
 
 		local pickerFrame = Instance.new("Frame")
 		pickerFrame.BackgroundTransparency = 1
 		pickerFrame.Position = UDim2.new(0, 8, 0, ROW_HEIGHT)
-		pickerFrame.Size = UDim2.new(1, -16, 0, 24)
+		pickerFrame.Size = UDim2.new(1, -16, 0, 108)
 		pickerFrame.Parent = container
 
-		local hueTrack = Instance.new("Frame")
-		hueTrack.Size = UDim2.new(1, 0, 0, 12)
-		hueTrack.Position = UDim2.new(0, 0, 0, 6)
-		hueTrack.Parent = pickerFrame
-		corner(hueTrack, 3)
+		local svFrame = Instance.new("Frame")
+		svFrame.BackgroundColor3 = Color3.fromHSV(h, 1, 1)
+		svFrame.BorderSizePixel = 0
+		svFrame.Size = UDim2.new(1, 0, 0, 76)
+		svFrame.Parent = pickerFrame
+		corner(svFrame, 6)
 
-		local gradient = Instance.new("UIGradient")
-		gradient.Color = ColorSequence.new({
+		local svWhite = Instance.new("UIGradient")
+		svWhite.Color = ColorSequence.new({
+			ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+			ColorSequenceKeypoint.new(1, Color3.fromHSV(h, 1, 1)),
+		})
+		svWhite.Parent = svFrame
+
+		local svBlack = Instance.new("Frame")
+		svBlack.BackgroundTransparency = 1
+		svBlack.BorderSizePixel = 0
+		svBlack.Size = UDim2.fromScale(1, 1)
+		svBlack.Parent = svFrame
+		corner(svBlack, 6)
+
+		local svBlackGradient = Instance.new("UIGradient")
+		svBlackGradient.Rotation = 90
+		svBlackGradient.Color = ColorSequence.new(Color3.new(0, 0, 0), Color3.new(0, 0, 0))
+		svBlackGradient.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		svBlackGradient.Parent = svBlack
+
+		local svCursor = Instance.new("Frame")
+		svCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+		svCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+		svCursor.Position = UDim2.new(s, 0, 1 - v, 0)
+		svCursor.Size = UDim2.fromOffset(10, 10)
+		svCursor.BorderSizePixel = 0
+		svCursor.ZIndex = 3
+		svCursor.Parent = svFrame
+		corner(svCursor, 5)
+		stroke(svCursor, Color3.new(0, 0, 0), 0.15, 1)
+
+		local hueTrack = Instance.new("Frame")
+		hueTrack.BackgroundColor3 = Color3.new(1, 1, 1)
+		hueTrack.BorderSizePixel = 0
+		hueTrack.Position = UDim2.new(0, 0, 0, 84)
+		hueTrack.Size = UDim2.new(1, 0, 0, 10)
+		hueTrack.Parent = pickerFrame
+		corner(hueTrack, 5)
+
+		local hueGradient = Instance.new("UIGradient")
+		hueGradient.Color = ColorSequence.new({
 			ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 0, 0)),
 			ColorSequenceKeypoint.new(0.167, Color3.fromRGB(255, 255, 0)),
 			ColorSequenceKeypoint.new(0.333, Color3.fromRGB(0, 255, 0)),
@@ -953,43 +1208,74 @@ function PanelLib:CreatePanel(cfg)
 			ColorSequenceKeypoint.new(0.833, Color3.fromRGB(255, 0, 255)),
 			ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 0)),
 		})
-		gradient.Parent = hueTrack
+		hueGradient.Parent = hueTrack
 
-		local dragging = false
-		local function updateHue(inputX)
-			local alpha = math.clamp((inputX - hueTrack.AbsolutePosition.X) / hueTrack.AbsoluteSize.X, 0, 1)
-			h = alpha
+		local hueCursor = Instance.new("Frame")
+		hueCursor.BackgroundColor3 = Color3.new(1, 1, 1)
+		hueCursor.AnchorPoint = Vector2.new(0.5, 0.5)
+		hueCursor.Position = UDim2.new(h, 0, 0.5, 0)
+		hueCursor.Size = UDim2.fromOffset(8, 16)
+		hueCursor.BorderSizePixel = 0
+		hueCursor.ZIndex = 3
+		hueCursor.Parent = hueTrack
+		corner(hueCursor, 4)
+		stroke(hueCursor, Color3.new(0, 0, 0), 0.2, 1)
+
+		local dragging = nil
+		local function applyColor()
 			color = Color3.fromHSV(h, s, v)
+			svWhite.Color = ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Color3.new(1, 1, 1)),
+				ColorSequenceKeypoint.new(1, Color3.fromHSV(h, 1, 1)),
+			})
+			svCursor.Position = UDim2.new(s, 0, 1 - v, 0)
+			hueCursor.Position = UDim2.new(h, 0, 0.5, 0)
 			preview.BackgroundColor3 = color
 			if callback then task.spawn(callback, color) end
 		end
 
+		svFrame.InputBegan:Connect(function(inp)
+			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
+				dragging = "SV"
+				s = math.clamp((inp.Position.X - svFrame.AbsolutePosition.X) / svFrame.AbsoluteSize.X, 0, 1)
+				v = 1 - math.clamp((inp.Position.Y - svFrame.AbsolutePosition.Y) / svFrame.AbsoluteSize.Y, 0, 1)
+				applyColor()
+			end
+		end)
 		hueTrack.InputBegan:Connect(function(inp)
 			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then
-				dragging = true
-				updateHue(inp.Position.X)
+				dragging = "Hue"
+				h = math.clamp((inp.Position.X - hueTrack.AbsolutePosition.X) / hueTrack.AbsoluteSize.X, 0, 1)
+				applyColor()
 			end
-		end)
-		hueTrack.InputEnded:Connect(function(inp)
-			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then dragging = false end
 		end)
 		track(safeService("UserInputService").InputChanged:Connect(function(inp)
-			if dragging and (inp.UserInputType == Enum.UserInputType.MouseMovement or inp.UserInputType == Enum.UserInputType.Touch) then
-				updateHue(inp.Position.X)
+			if not dragging then return end
+			if inp.UserInputType ~= Enum.UserInputType.MouseMovement and inp.UserInputType ~= Enum.UserInputType.Touch then return end
+			if dragging == "SV" then
+				s = math.clamp((inp.Position.X - svFrame.AbsolutePosition.X) / svFrame.AbsoluteSize.X, 0, 1)
+				v = 1 - math.clamp((inp.Position.Y - svFrame.AbsolutePosition.Y) / svFrame.AbsoluteSize.Y, 0, 1)
+			else
+				h = math.clamp((inp.Position.X - hueTrack.AbsolutePosition.X) / hueTrack.AbsoluteSize.X, 0, 1)
 			end
+			applyColor()
+		end))
+		track(safeService("UserInputService").InputEnded:Connect(function(inp)
+			if inp.UserInputType == Enum.UserInputType.MouseButton1 or inp.UserInputType == Enum.UserInputType.Touch then dragging = nil end
 		end))
 
+		header.MouseEnter:Connect(function() tween(container, TI, { BackgroundColor3 = Theme.RowHover }) end)
+		header.MouseLeave:Connect(function() tween(container, TI, { BackgroundColor3 = Theme.Row }) end)
 		header.Activated:Connect(function()
 			expanded = not expanded
-			tween(container, TI, { Size = UDim2.new(1, 0, 0, expanded and (ROW_HEIGHT + 28) or ROW_HEIGHT) })
+			tween(container, TI_S, { Size = UDim2.new(1, 0, 0, expanded and (ROW_HEIGHT + 108) or ROW_HEIGHT) })
 		end)
 
 		local api = {}
 		function api:Set(c3)
 			color = c3
 			h, s, v = color:ToHSV()
-			preview.BackgroundColor3 = color
-			if callback then task.spawn(callback, color) end
+			applyColor()
 		end
 		function api:Get() return color end
 		api.Instance = container
