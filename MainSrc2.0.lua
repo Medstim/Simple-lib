@@ -709,16 +709,26 @@ function PanelLib:CreatePanel(cfg)
 		}
 	end
 
-	function Panel:Separator()
-		local row = newRow(2, true)
-		local line = Instance.new("Frame")
-		line.BackgroundColor3 = Theme.Stroke
-		line.BorderSizePixel = 0
-		line.Size = UDim2.new(1, 0, 0, 1)
-		line.Position = UDim2.new(0, 0, 0.5, 0)
-		line.Parent = row
-		return { Instance = row }
-	end
+function Panel:Separator()
+    local row = newRow(2, true)
+
+    local line = Instance.new("Frame")
+    line.Name = "Divider"
+    line.BackgroundColor3 = Theme.Stroke
+    line.BorderSizePixel = 0
+    line.Size = UDim2.new(1, 0, 0, 1)
+    line.Position = UDim2.new(0, 0, 0.5, 0)
+    line.Parent = row
+
+    return {
+        Instance = row
+    }
+end
+
+-- Alias for compatibility
+function Panel:Divider()
+    return Panel:Separator()
+end
 
 	function Panel:Label(text)
 		local row = newRow(16, true)
