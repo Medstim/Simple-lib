@@ -251,7 +251,7 @@ The rest of the visual style is controlled by a `Theme` table inside the module.
 
 ```lua
 local PanelLib = loadstring(game:HttpGet(
-    "https://raw.githubusercontent.com/Medstim/Simple-lib/refs/heads/main/MainSrc.lua"
+    "https://raw.githubusercontent.com/Medstim/Simple-lib/refs/heads/main/MainSrc2.0.lua"
 ))()
 
 local plr = game.Players.LocalPlayer
